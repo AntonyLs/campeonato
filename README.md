@@ -1,98 +1,351 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Campeonato API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Backend para el sistema de inscripcion de equipos de campeonato.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+La API esta construida con:
 
-## Description
+- NestJS
+- Prisma
+- PostgreSQL
+- Resend para envio de enlaces por correo
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Modelo actual
 
-## Project setup
+La base trabaja con estas entidades principales:
 
-```bash
-$ npm install
+- `User`: delegado del equipo
+- `Team`: equipo inscrito
+- `Player`: jugador del equipo
+- `Category`: categoria del campeonato
+- `ProfessionalCollege`: colegio profesional
+- `Admin`: administrador del sistema
+
+Reglas actuales:
+
+- un delegado tiene un solo equipo
+- un equipo tiene muchos jugadores
+- el `dni` del delegado es unico
+- el `email` del delegado es unico
+- el `dni` del jugador es unico
+
+## Variables de entorno
+
+En tu `.env` deberias tener algo como esto:
+
+```env
+DATABASE_URL=postgresql://...
+RESEND_API_KEY=tu_api_key
+RESEND_FROM_EMAIL="Campeonato <onboarding@resend.dev>"
+DELEGATE_CONTINUATION_URL=http://localhost:3001/delegado/ficha
+SESSION_TOKEN_SECRET=una_clave_larga
+PORT=3000
 ```
 
-## Compile and run the project
+## Instalacion
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+npm install
+npx prisma generate
+npx prisma db push
 ```
 
-## Run tests
+## Ejecucion
 
 ```bash
-# unit tests
-$ npm run test
+# desarrollo
+npm run start:dev
 
-# e2e tests
-$ npm run test:e2e
+# build
+npm run build
 
-# test coverage
-$ npm run test:cov
+# tests
+npm test -- --runInBand
 ```
 
-## Deployment
+## Flujo principal del delegado
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+1. El delegado registra sus datos y los de su equipo con `POST /inscriptions`
+2. El backend crea la inscripcion y genera un link de continuidad
+3. Se envia el link al correo del delegado
+4. El delegado vuelve a entrar con ese link
+5. El delegado valida su acceso con `token + dni`
+6. El backend devuelve un `accessToken`
+7. El delegado usa ese token para editar su perfil, su equipo y sus jugadores
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Endpoints
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+### Inscripciones
+
+#### `POST /inscriptions`
+Crea la inscripcion inicial del delegado y su equipo.
+
+Tambien:
+
+- genera token de continuidad
+- genera link para continuar inscripcion
+- intenta enviar el link por correo
+
+Body esperado:
+
+```json
+{
+  "nombres": "Carlos",
+  "apellido_paterno": "Ramos",
+  "apellido_materno": "Flores",
+  "dni": "12345678",
+  "celular": "999888777",
+  "email": "delegado@mail.com",
+  "nombre_equipo": "Los Halcones",
+  "categoriaId": 1,
+  "colegioProfesionalId": 1
+}
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+#### `GET /inscriptions`
+Lista todas las inscripciones con delegado, equipo y jugadores.
 
-## Resources
+#### `GET /inscriptions/:id`
+Devuelve una inscripcion por id del delegado.
 
-Check out a few resources that may come in handy when working with NestJS:
+#### `PATCH /inscriptions/:id`
+Actualiza los datos generales de una inscripcion.
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+#### `GET /inscriptions/access/:token`
+Busca una inscripcion usando el token del link de continuidad.
 
-## Support
+#### `POST /inscriptions/recover-access`
+Regenera un link de continuidad usando `dni + email`.
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+Body esperado:
 
-## Stay in touch
+```json
+{
+  "dni": "12345678",
+  "email": "delegado@mail.com"
+}
+```
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+#### `POST /inscriptions/access/verify`
+Valida el acceso del delegado con `token + dni`.
 
-## License
+Devuelve un `accessToken` de sesion corta para usar en `/delegate/...`.
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Body esperado:
+
+```json
+{
+  "token": "TOKEN_DEL_LINK",
+  "dni": "12345678"
+}
+```
+
+#### `GET /inscriptions/access/me`
+Devuelve la inscripcion actual del delegado usando:
+
+```http
+Authorization: Bearer TOKEN
+```
+
+### Delegate
+
+Todas las rutas de esta seccion usan:
+
+```http
+Authorization: Bearer TOKEN_DEL_DELEGADO
+```
+
+#### `GET /delegate/me`
+Devuelve el perfil del delegado autenticado.
+
+#### `PATCH /delegate/me`
+Actualiza el perfil del delegado autenticado.
+
+#### `GET /delegate/team`
+Devuelve el equipo del delegado autenticado.
+
+#### `PATCH /delegate/team`
+Actualiza el equipo del delegado autenticado.
+
+#### `GET /delegate/players`
+Lista los jugadores del equipo del delegado autenticado.
+
+#### `POST /delegate/players`
+Crea un jugador en el equipo del delegado autenticado.
+
+Body esperado:
+
+```json
+{
+  "nombres": "Juan Carlos",
+  "apellido_paterno": "Perez",
+  "apellido_materno": "Ramos",
+  "dni": "87654321",
+  "nro_colegiatura": "CAL-12345",
+  "edad": 35
+}
+```
+
+#### `PATCH /delegate/players/:id`
+Actualiza un jugador del equipo del delegado autenticado.
+
+#### `DELETE /delegate/players/:id`
+Elimina un jugador del equipo del delegado autenticado.
+
+### Players
+
+Estas rutas son mas administrativas o de consulta general.
+
+#### `GET /players`
+Lista todos los jugadores con delegado y equipo.
+
+#### `GET /players/:id`
+Devuelve un jugador por id.
+
+#### `PATCH /players/:id`
+Actualiza un jugador por id.
+
+#### `DELETE /players/:id`
+Elimina un jugador por id.
+
+#### `GET /teams/:teamId/players`
+Lista los jugadores de un equipo.
+
+#### `POST /users/:userId/players`
+Crea un jugador usando el delegado como referencia.
+
+#### `POST /users/:userId/teams/:teamId/players`
+Crea un jugador validando que ese equipo pertenezca al delegado.
+
+### Users
+
+#### `GET /users`
+Lista todos los delegados.
+
+#### `GET /users/:id`
+Devuelve un delegado por id.
+
+#### `GET /users/with-team`
+Lista delegados con su equipo y jugadores.
+
+#### `GET /users/:id/with-team`
+Devuelve un delegado con su equipo y jugadores.
+
+#### `PATCH /users/:id`
+Actualiza un delegado por id.
+
+### Teams
+
+#### `GET /teams`
+Lista todos los equipos.
+
+#### `GET /teams/:id`
+Devuelve un equipo por id.
+
+#### `GET /teams/with-users`
+Lista equipos con delegado y jugadores.
+
+#### `GET /teams/:id/with-user`
+Devuelve un equipo con delegado y jugadores.
+
+#### `PATCH /teams/:id`
+Actualiza un equipo por id.
+
+### Categorias
+
+#### `GET /categorias`
+Lista categorias.
+
+#### `GET /categorias/:id`
+Devuelve categoria por id.
+
+#### `POST /categorias`
+Crea categoria.
+
+#### `PATCH /categorias/:id`
+Actualiza categoria.
+
+#### `DELETE /categorias/:id`
+Elimina categoria.
+
+### Colegios profesionales
+
+#### `GET /colegios-profesionales`
+Lista colegios profesionales.
+
+#### `GET /colegios-profesionales/:id`
+Devuelve un colegio profesional por id.
+
+#### `POST /colegios-profesionales`
+Crea colegio profesional.
+
+#### `PATCH /colegios-profesionales/:id`
+Actualiza colegio profesional.
+
+#### `DELETE /colegios-profesionales/:id`
+Elimina colegio profesional.
+
+### Admins
+
+#### `GET /admins`
+Lista administradores.
+
+#### `GET /admins/:id`
+Devuelve administrador por id.
+
+#### `POST /admins`
+Crea administrador.
+
+Body esperado:
+
+```json
+{
+  "organizador": "Comite Central",
+  "correo": "admin@mail.com",
+  "nro_celular": "999888777",
+  "dni": "12345678",
+  "password": "123456"
+}
+```
+
+#### `PATCH /admins/:id`
+Actualiza administrador.
+
+#### `DELETE /admins/:id`
+Elimina administrador.
+
+### Auth
+
+#### `POST /auth/admin/login`
+Login de administrador por correo o dni con password.
+
+Body posible:
+
+```json
+{
+  "correo": "admin@mail.com",
+  "password": "123456"
+}
+```
+
+o:
+
+```json
+{
+  "dni": "12345678",
+  "password": "123456"
+}
+```
+
+#### `GET /auth/admin/me`
+Devuelve el admin autenticado con:
+
+```http
+Authorization: Bearer TOKEN
+```
+
+## Notas
+
+- el backend ya envia el link de continuidad por correo usando Resend
+- si Resend esta en modo prueba, solo podras enviar a tu propio correo autorizado
+- si quieres enviar a cualquier delegado real, debes verificar dominio en Resend
+- el siguiente bloque natural del proyecto es el reporte de fichas y luego el frontend
