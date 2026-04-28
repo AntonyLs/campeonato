@@ -39,7 +39,10 @@ RESEND_FROM_EMAIL="Campeonato <onboarding@resend.dev>"
 DELEGATE_CONTINUATION_URL=http://localhost:3001/delegado/ficha
 SESSION_TOKEN_SECRET=una_clave_larga
 PORT=3000
+CORS_ORIGINS=http://localhost:3001
 ```
+
+> Todas las rutas tienen prefijo global `/api` (ej. `http://localhost:3000/api/inscriptions`).
 
 ## Instalacion
 
