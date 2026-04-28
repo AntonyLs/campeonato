@@ -9,6 +9,10 @@ export class TeamsService {
 
   findAll() {
     return this.prisma.team.findMany({
+      include: {
+        category: true,
+        professionalCollege: true,
+      },
       orderBy: {
         id: 'asc',
       },
@@ -18,6 +22,10 @@ export class TeamsService {
   async findOne(id: number) {
     const team = await this.prisma.team.findUnique({
       where: { id },
+      include: {
+        category: true,
+        professionalCollege: true,
+      },
     });
 
     if (!team) {
@@ -30,6 +38,8 @@ export class TeamsService {
   findAllWithUsers() {
     return this.prisma.team.findMany({
       include: {
+        category: true,
+        professionalCollege: true,
         user: true,
         players: true,
       },
@@ -43,6 +53,8 @@ export class TeamsService {
     const team = await this.prisma.team.findUnique({
       where: { id },
       include: {
+        category: true,
+        professionalCollege: true,
         user: true,
         players: true,
       },
@@ -60,6 +72,10 @@ export class TeamsService {
       return await this.prisma.team.update({
         where: { id },
         data,
+        include: {
+          category: true,
+          professionalCollege: true,
+        },
       });
     } catch (error) {
       handlePrismaError(error, 'equipo');

@@ -56,10 +56,23 @@ export class PlayersService {
       where: {
         teamId,
       },
+      include: {
+        team: {
+          include: {
+            user: true,
+          },
+        },
+      },
       orderBy: {
         id: 'asc',
       },
-    });
+    }).then((players) =>
+      players.map((player) => this.toPlayerWithOwnerResponse(player)),
+    );
+  }
+
+  findByDelegateTeam(teamId: number) {
+    return this.findByTeam(teamId);
   }
 
   async update(id: number, data: UpdatePlayerDto) {
@@ -111,6 +124,20 @@ export class PlayersService {
     }
   }
 
+  async updateForDelegateTeam(
+    teamId: number,
+    id: number,
+    data: UpdatePlayerDto,
+  ) {
+    await this.ensurePlayerBelongsToTeam(id, teamId);
+    return this.update(id, data);
+  }
+
+  async removeForDelegateTeam(teamId: number, id: number) {
+    await this.ensurePlayerBelongsToTeam(id, teamId);
+    return this.remove(id);
+  }
+
   async createForUser(userId: number, data: CreatePlayerDto) {
     const team = await this.prisma.team.findUnique({
       where: {
@@ -151,9 +178,12 @@ export class PlayersService {
     try {
       const player = await this.prisma.player.create({
         data: {
-          nombre: data.nombre,
+          nombres: data.nombres,
+          apellido_paterno: data.apellido_paterno,
+          apellido_materno: data.apellido_materno,
           dni: data.dni,
-          numero: data.numero,
+          nro_colegiatura: data.nro_colegiatura,
+          edad: data.edad,
           teamId,
         },
         include: {
@@ -180,6 +210,24 @@ export class PlayersService {
 
     if (!player) {
       throw new NotFoundException('No se encontro el jugador.');
+    }
+  }
+
+  private async ensurePlayerBelongsToTeam(id: number, teamId: number) {
+    const player = await this.prisma.player.findUnique({
+      where: {
+        id,
+      },
+    });
+
+    if (!player) {
+      throw new NotFoundException('No se encontro el jugador.');
+    }
+
+    if (player.teamId !== teamId) {
+      throw new ForbiddenException(
+        'El jugador no pertenece al equipo del delegado.',
+      );
     }
   }
 
@@ -211,9 +259,12 @@ export class PlayersService {
 
   private toPlayerWithOwnerResponse(player: {
     id: number;
-    nombre: string;
+    nombres: string;
+    apellido_paterno: string;
+    apellido_materno: string;
     dni: string;
-    numero: number | null;
+    nro_colegiatura: string | null;
+    edad: number | null;
     teamId: number;
     team: {
       id: number;
@@ -228,9 +279,12 @@ export class PlayersService {
   }) {
     return {
       id: player.id,
-      nombre: player.nombre,
+      nombres: player.nombres,
+      apellido_paterno: player.apellido_paterno,
+      apellido_materno: player.apellido_materno,
       dni: player.dni,
-      numero: player.numero,
+      nro_colegiatura: player.nro_colegiatura,
+      edad: player.edad,
       teamId: player.teamId,
       team: {
         id: player.team.id,

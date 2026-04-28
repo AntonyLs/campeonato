@@ -32,6 +32,8 @@ export class UsersService {
       include: {
         team: {
           include: {
+            category: true,
+            professionalCollege: true,
             players: true,
           },
         },
@@ -48,6 +50,8 @@ export class UsersService {
       include: {
         team: {
           include: {
+            category: true,
+            professionalCollege: true,
             players: true,
           },
         },

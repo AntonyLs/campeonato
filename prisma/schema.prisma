@@ -20,28 +20,61 @@ model User {
   apellido_materno  String
   dni               String  @unique
   celular           String
-  email             String
+  email             String  @unique
 
   team              Team?
 }
 
+model Admin {
+  id           Int    @id @default(autoincrement())
+  organizador  String
+  correo       String @unique
+  nro_celular  String
+  dni          String @unique
+  password     String
+}
+
+model ProfessionalCollege {
+  id        Int    @id @default(autoincrement())
+  nombre    String @unique
+
+  teams     Team[]
+}
+
+model Category {
+  id        Int    @id @default(autoincrement())
+  nombre    String @unique
+
+  teams     Team[]
+}
+
 model Team {
-  id        Int     @id @default(autoincrement())
-  nombre    String
-  categoria String?
+  id                     Int                 @id @default(autoincrement())
+  nombre                 String
+  categoria              String?
+  userId                 Int                 @unique
+  categoryId             Int?
+  professionalCollegeId  Int?
+  playerRegistrationToken String?
+  playerRegistrationTokenExpiresAt DateTime?
+  registrationClosed     Boolean             @default(false)
 
-  userId    Int     @unique
-  user      User    @relation(fields: [userId], references: [id])
+  user                   User                @relation(fields: [userId], references: [id])
+  category               Category?           @relation(fields: [categoryId], references: [id])
+  professionalCollege    ProfessionalCollege? @relation(fields: [professionalCollegeId], references: [id])
 
-  players   Player[]
+  players                Player[]
 }
 
 model Player {
-  id       Int    @id @default(autoincrement())
-  nombre   String
-  dni      String @unique
-  numero   Int?
+  id                Int     @id @default(autoincrement())
+  nombres           String  @default("")
+  apellido_paterno  String  @default("")
+  apellido_materno  String  @default("")
+  dni               String  @unique
+  nro_colegiatura   String?
+  edad              Int?
 
-  teamId   Int
-  team     Team   @relation(fields: [teamId], references: [id])
+  teamId            Int
+  team              Team    @relation(fields: [teamId], references: [id])
 }

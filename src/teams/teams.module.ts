@@ -7,5 +7,6 @@ import { TeamsService } from './teams.service';
   imports: [PrismaModule],
   controllers: [TeamsController],
   providers: [TeamsService],
+  exports: [TeamsService],
 })
 export class TeamsModule {}
