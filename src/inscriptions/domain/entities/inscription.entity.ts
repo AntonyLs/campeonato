@@ -24,14 +24,3 @@ export interface Inscription {
   email: string;
   team: RegisteredTeam | null;
 }
-
-export interface InscriptionContinuationAccess {
-  token: string;
-  link: string;
-  expiresAt: Date | null;
-}
-
-export interface CreatedInscriptionResult {
-  inscription: Inscription;
-  continuationAccess: InscriptionContinuationAccess;
-}

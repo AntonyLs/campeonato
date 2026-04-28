@@ -7,24 +7,16 @@ import {
 } from '../security/session-token.util';
 import { verifyPassword } from '../security/hash.util';
 import { AdminLoginDto } from './dto/admin-login.dto';
+import { DelegateLoginDto } from './dto/delegate-login.dto';
 
 @Injectable()
 export class AuthService {
   constructor(private readonly prisma: PrismaService) {}
 
   async loginAdmin(data: AdminLoginDto) {
-    if ((!data.correo && !data.dni) || !data.password) {
-      throw new UnauthorizedException(
-        'Debes enviar correo o dni junto con tu password.',
-      );
-    }
-
-    const admin = await this.prisma.admin.findFirst({
+    const admin = await this.prisma.admin.findUnique({
       where: {
-        OR: [
-          data.correo ? { correo: data.correo } : undefined,
-          data.dni ? { dni: data.dni } : undefined,
-        ].filter(Boolean) as Array<{ correo?: string; dni?: string }>,
+        correo: data.correo,
       },
     });
 
@@ -48,6 +40,42 @@ export class AuthService {
     };
   }
 
+  async loginDelegate(data: DelegateLoginDto) {
+    const delegate = await this.prisma.user.findFirst({
+      where: {
+        email: data.email,
+        dni: data.dni,
+      },
+      include: {
+        team: {
+          include: {
+            category: true,
+            professionalCollege: true,
+            players: true,
+          },
+        },
+      },
+    });
+
+    if (!delegate) {
+      throw new UnauthorizedException('Datos de delegado invalidos.');
+    }
+
+    const accessToken = createSessionToken(
+      {
+        sub: 'delegate',
+        entityId: delegate.id,
+        teamId: delegate.team?.id,
+      },
+      60 * 60 * 8,
+    );
+
+    return {
+      accessToken,
+      inscription: delegate,
+    };
+  }
+
   async getCurrentAdmin(token: string) {
     const payload = this.verifyToken(token, 'admin');
 
@@ -63,6 +91,31 @@ export class AuthService {
 
     const { password, ...sanitizedAdmin } = admin;
     return sanitizedAdmin;
+  }
+
+  async getCurrentDelegate(token: string) {
+    const payload = this.verifyToken(token, 'delegate');
+
+    const delegate = await this.prisma.user.findUnique({
+      where: {
+        id: payload.entityId,
+      },
+      include: {
+        team: {
+          include: {
+            category: true,
+            professionalCollege: true,
+            players: true,
+          },
+        },
+      },
+    });
+
+    if (!delegate) {
+      throw new NotFoundException('No se encontro el delegado.');
+    }
+
+    return delegate;
   }
 
   verifyToken(token: string, subject: SessionTokenPayload['sub']) {

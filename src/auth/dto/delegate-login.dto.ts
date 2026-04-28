@@ -1,10 +1,10 @@
 import { IsEmail, IsString, Length } from 'class-validator';
 
-export class RecoverInscriptionAccessDto {
+export class DelegateLoginDto {
+  @IsEmail()
+  email!: string;
+
   @IsString()
   @Length(8, 12)
   dni!: string;
-
-  @IsEmail()
-  email!: string;
 }

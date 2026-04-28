@@ -1,7 +1,4 @@
-import {
-  CreatedInscriptionResult,
-  Inscription,
-} from '../entities/inscription.entity';
+import { Inscription } from '../entities/inscription.entity';
 
 export interface CreateInscriptionData {
   nombres: string;
@@ -20,14 +17,9 @@ export type UpdateInscriptionData = Partial<CreateInscriptionData>;
 export abstract class InscriptionsRepository {
   abstract findAll(): Promise<Inscription[]>;
   abstract findOne(id: number): Promise<Inscription>;
-  abstract create(data: CreateInscriptionData): Promise<CreatedInscriptionResult>;
+  abstract create(data: CreateInscriptionData): Promise<Inscription>;
   abstract update(
     id: number,
     data: UpdateInscriptionData,
   ): Promise<Inscription>;
-  abstract findByContinuationToken(token: string): Promise<Inscription>;
-  abstract recoverContinuationAccess(
-    dni: string,
-    email: string,
-  ): Promise<CreatedInscriptionResult['continuationAccess']>;
 }

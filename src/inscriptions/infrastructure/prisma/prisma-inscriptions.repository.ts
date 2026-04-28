@@ -2,10 +2,6 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { handlePrismaError } from '../../../prisma/prisma-error.mapper';
 import { PrismaService } from '../../../prisma/prisma.service';
 import {
-  generateOpaqueToken,
-  hashOpaqueToken,
-} from '../../../security/hash.util';
-import {
   CreateInscriptionData,
   InscriptionsRepository,
   UpdateInscriptionData,
@@ -14,12 +10,6 @@ import {
 @Injectable()
 export class PrismaInscriptionsRepository implements InscriptionsRepository {
   constructor(private readonly prisma: PrismaService) {}
-
-  private readonly continuationUrl =
-    process.env.DELEGATE_CONTINUATION_URL ??
-    'http://localhost:3001/delegado/ficha';
-
-  private readonly continuationExpiresInDays = 30;
 
   findAll() {
     return this.prisma.user.findMany({
@@ -61,11 +51,7 @@ export class PrismaInscriptionsRepository implements InscriptionsRepository {
 
   async create(data: CreateInscriptionData) {
     try {
-      const rawToken = generateOpaqueToken();
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + this.continuationExpiresInDays);
-
-      const inscription = await this.prisma.user.create({
+      return await this.prisma.user.create({
         data: {
           nombres: data.nombres,
           apellido_paterno: data.apellido_paterno,
@@ -78,8 +64,6 @@ export class PrismaInscriptionsRepository implements InscriptionsRepository {
               nombre: data.nombre_equipo,
               categoryId: data.categoriaId,
               professionalCollegeId: data.colegioProfesionalId,
-              playerRegistrationToken: hashOpaqueToken(rawToken),
-              playerRegistrationTokenExpiresAt: expiresAt,
             },
           },
         },
@@ -92,15 +76,6 @@ export class PrismaInscriptionsRepository implements InscriptionsRepository {
           },
         },
       });
-
-      return {
-        inscription,
-        continuationAccess: {
-          token: rawToken,
-          link: this.buildContinuationLink(rawToken),
-          expiresAt,
-        },
-      };
     } catch (error) {
       handlePrismaError(error, 'inscripcion');
     }
@@ -184,86 +159,5 @@ export class PrismaInscriptionsRepository implements InscriptionsRepository {
     } catch (error) {
       handlePrismaError(error, 'inscripcion');
     }
-  }
-
-  async findByContinuationToken(token: string) {
-    const inscription = await this.prisma.user.findFirst({
-      where: {
-        team: {
-          is: {
-            playerRegistrationToken: hashOpaqueToken(token),
-            OR: [
-              {
-                playerRegistrationTokenExpiresAt: null,
-              },
-              {
-                playerRegistrationTokenExpiresAt: {
-                  gte: new Date(),
-                },
-              },
-            ],
-          },
-        },
-      },
-      include: {
-        team: {
-          include: {
-            category: true,
-            professionalCollege: true,
-            players: true,
-          },
-        },
-      },
-    });
-
-    if (!inscription) {
-      throw new NotFoundException(
-        'No se encontro una inscripcion valida para este enlace.',
-      );
-    }
-
-    return inscription;
-  }
-
-  async recoverContinuationAccess(dni: string, email: string) {
-    const inscription = await this.prisma.user.findFirst({
-      where: {
-        dni,
-        email,
-      },
-      include: {
-        team: true,
-      },
-    });
-
-    if (!inscription || !inscription.team) {
-      throw new NotFoundException(
-        'No se encontro una inscripcion con esos datos.',
-      );
-    }
-
-    const rawToken = generateOpaqueToken();
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + this.continuationExpiresInDays);
-
-    await this.prisma.team.update({
-      where: {
-        id: inscription.team.id,
-      },
-      data: {
-        playerRegistrationToken: hashOpaqueToken(rawToken),
-        playerRegistrationTokenExpiresAt: expiresAt,
-      },
-    });
-
-    return {
-      token: rawToken,
-      link: this.buildContinuationLink(rawToken),
-      expiresAt,
-    };
-  }
-
-  private buildContinuationLink(token: string) {
-    return `${this.continuationUrl}?token=${token}`;
   }
 }
