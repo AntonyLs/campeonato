@@ -26,6 +26,11 @@ export class PlayersController {
     return this.playersService.findCarnet(id);
   }
 
+  @Get('public/carnets/:codigo/verify')
+  verifyCarnet(@Param('codigo') codigo: string) {
+    return this.playersService.verifyCarnet(codigo);
+  }
+
   @Get('players/:id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.playersService.findOne(id);

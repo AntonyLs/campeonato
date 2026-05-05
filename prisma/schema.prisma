@@ -76,6 +76,8 @@ model Player {
   nro_colegiatura   String?
   edad              Int?
   foto_url          String?
+  codigo_carnet     String? @unique
+  carnet_activo     Boolean @default(true)
 
   teamId            Int
   team              Team    @relation(fields: [teamId], references: [id])

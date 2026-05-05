@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { randomBytes } from 'crypto';
 import { handlePrismaError } from '../prisma/prisma-error.mapper';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePlayerDto } from './dto/create-player.dto';
@@ -71,7 +72,37 @@ export class PlayersService {
       throw new NotFoundException('No se encontro el jugador.');
     }
 
-    return this.toPlayerCarnetResponse(player);
+    const playerWithCarnet = await this.ensureCarnetCode(player.id);
+
+    return this.toPlayerCarnetResponse(playerWithCarnet);
+  }
+
+  async verifyCarnet(codigo: string) {
+    const player = await this.prisma.player.findUnique({
+      where: {
+        codigo_carnet: codigo,
+      },
+      include: {
+        team: {
+          include: {
+            user: true,
+            category: true,
+            professionalCollege: true,
+          },
+        },
+      },
+    });
+
+    if (!player) {
+      throw new NotFoundException('No se encontro un carnet valido.');
+    }
+
+    return {
+      valido: player.carnet_activo,
+      codigo_carnet: player.codigo_carnet,
+      carnet_activo: player.carnet_activo,
+      ...this.toPlayerCarnetResponse(player),
+    };
   }
 
   findByTeam(teamId: number) {
@@ -213,6 +244,7 @@ export class PlayersService {
           nro_colegiatura: data.nro_colegiatura,
           edad: data.edad,
           foto_url: data.foto_url,
+          codigo_carnet: await this.generateUniqueCarnetCode(),
           teamId,
         },
         include: {
@@ -286,6 +318,63 @@ export class PlayersService {
     }
   }
 
+  private async ensureCarnetCode(id: number) {
+    const existing = await this.prisma.player.findUnique({
+      where: { id },
+      include: {
+        team: {
+          include: {
+            user: true,
+            category: true,
+            professionalCollege: true,
+          },
+        },
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('No se encontro el jugador.');
+    }
+
+    if (existing.codigo_carnet) {
+      return existing;
+    }
+
+    const codigo = await this.generateUniqueCarnetCode();
+
+    return this.prisma.player.update({
+      where: { id },
+      data: { codigo_carnet: codigo },
+      include: {
+        team: {
+          include: {
+            user: true,
+            category: true,
+            professionalCollege: true,
+          },
+        },
+      },
+    });
+  }
+
+  private async generateUniqueCarnetCode() {
+    while (true) {
+      const code = `CAR-${new Date().getFullYear()}-${randomBytes(4)
+        .toString('hex')
+        .toUpperCase()}`;
+
+      const existing = await this.prisma.player.findUnique({
+        where: {
+          codigo_carnet: code,
+        },
+      });
+
+      if (!existing) {
+        return code;
+      }
+    }
+  }
+
   private toPlayerWithOwnerResponse(player: {
     id: number;
     nombres: string;
@@ -295,6 +384,8 @@ export class PlayersService {
     nro_colegiatura: string | null;
     edad: number | null;
     foto_url: string | null;
+    codigo_carnet: string | null;
+    carnet_activo: boolean;
     teamId: number;
     team: {
       id: number;
@@ -316,6 +407,8 @@ export class PlayersService {
       nro_colegiatura: player.nro_colegiatura,
       edad: player.edad,
       foto_url: player.foto_url,
+      codigo_carnet: player.codigo_carnet,
+      carnet_activo: player.carnet_activo,
       teamId: player.teamId,
       team: {
         id: player.team.id,
@@ -341,6 +434,8 @@ export class PlayersService {
     nro_colegiatura: string | null;
     edad: number | null;
     foto_url: string | null;
+    codigo_carnet: string | null;
+    carnet_activo: boolean;
     teamId: number;
     team: {
       id: number;
@@ -375,6 +470,8 @@ export class PlayersService {
         nro_colegiatura: player.nro_colegiatura,
         edad: player.edad,
         foto_url: player.foto_url,
+        codigo_carnet: player.codigo_carnet,
+        carnet_activo: player.carnet_activo,
       },
       equipo: {
         id: player.team.id,
@@ -391,6 +488,19 @@ export class PlayersService {
         celular: player.team.user.celular,
         email: player.team.user.email,
       },
+      verificacion_url: this.getCarnetVerificationUrl(player.codigo_carnet),
     };
+  }
+
+  private getCarnetVerificationUrl(codigoCarnet: string | null) {
+    if (!codigoCarnet) {
+      return null;
+    }
+
+    const baseUrl =
+      process.env.CARNET_VERIFICATION_BASE_URL ??
+      'http://localhost:3000/api/public/carnets';
+
+    return `${baseUrl}/${codigoCarnet}/verify`;
   }
 }
