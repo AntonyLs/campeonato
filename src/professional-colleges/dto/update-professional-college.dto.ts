@@ -5,4 +5,9 @@ export class UpdateProfessionalCollegeDto {
   @IsString()
   @MaxLength(140)
   nombre?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  abreviatura?: string;
 }

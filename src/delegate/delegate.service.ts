@@ -4,6 +4,7 @@ import { CreatePlayerDto } from '../players/dto/create-player.dto';
 import { UpdatePlayerDto } from '../players/dto/update-player.dto';
 import { PlayersService } from '../players/players.service';
 import { extractBearerToken } from '../security/session-token.util';
+import { SupabaseStorageService } from '../storage/supabase-storage.service';
 import { UpdateTeamDto } from '../teams/dto/update-team.dto';
 import { TeamsService } from '../teams/teams.service';
 import { UpdateUserDto } from '../users/dto/update-user.dto';
@@ -16,6 +17,7 @@ export class DelegateService {
     private readonly usersService: UsersService,
     private readonly teamsService: TeamsService,
     private readonly playersService: PlayersService,
+    private readonly storageService: SupabaseStorageService,
   ) {}
 
   async getProfile(authorization?: string) {
@@ -43,8 +45,37 @@ export class DelegateService {
     return this.playersService.findByDelegateTeam(this.getTeamId(payload));
   }
 
+  async findPlayerCarnet(authorization: string | undefined, id: number) {
+    const payload = this.getDelegatePayload(authorization);
+    return this.playersService.findCarnetForDelegateTeam(
+      this.getTeamId(payload),
+      id,
+    );
+  }
+
   async createPlayer(authorization: string | undefined, data: CreatePlayerDto) {
     const payload = this.getDelegatePayload(authorization);
+
+    return this.playersService.createForUser(payload.entityId, data);
+  }
+
+  async createPlayerWithPhoto(
+    authorization: string | undefined,
+    data: CreatePlayerDto,
+    file?: {
+      originalname: string;
+      mimetype: string;
+      size: number;
+      buffer: Buffer;
+    },
+  ) {
+    const payload = this.getDelegatePayload(authorization);
+
+    if (file) {
+      const upload = await this.storageService.uploadPlayerPhoto(file);
+      data.foto_url = upload.publicUrl;
+    }
+
     return this.playersService.createForUser(payload.entityId, data);
   }
 
@@ -54,6 +85,31 @@ export class DelegateService {
     data: UpdatePlayerDto,
   ) {
     const payload = this.getDelegatePayload(authorization);
+    return this.playersService.updateForDelegateTeam(
+      this.getTeamId(payload),
+      id,
+      data,
+    );
+  }
+
+  async updatePlayerWithPhoto(
+    authorization: string | undefined,
+    id: number,
+    data: UpdatePlayerDto,
+    file?: {
+      originalname: string;
+      mimetype: string;
+      size: number;
+      buffer: Buffer;
+    },
+  ) {
+    const payload = this.getDelegatePayload(authorization);
+
+    if (file) {
+      const upload = await this.storageService.uploadPlayerPhoto(file);
+      data.foto_url = upload.publicUrl;
+    }
+
     return this.playersService.updateForDelegateTeam(
       this.getTeamId(payload),
       id,

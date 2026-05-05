@@ -5,4 +5,9 @@ export class CreateProfessionalCollegeDto {
   @IsNotEmpty()
   @MaxLength(140)
   nombre!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(20)
+  abreviatura!: string;
 }

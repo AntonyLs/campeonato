@@ -51,6 +51,29 @@ export class PlayersService {
     return this.toPlayerWithOwnerResponse(player);
   }
 
+  async findCarnet(id: number) {
+    const player = await this.prisma.player.findUnique({
+      where: {
+        id,
+      },
+      include: {
+        team: {
+          include: {
+            user: true,
+            category: true,
+            professionalCollege: true,
+          },
+        },
+      },
+    });
+
+    if (!player) {
+      throw new NotFoundException('No se encontro el jugador.');
+    }
+
+    return this.toPlayerCarnetResponse(player);
+  }
+
   findByTeam(teamId: number) {
     return this.prisma.player.findMany({
       where: {
@@ -138,6 +161,11 @@ export class PlayersService {
     return this.remove(id);
   }
 
+  async findCarnetForDelegateTeam(teamId: number, id: number) {
+    await this.ensurePlayerBelongsToTeam(id, teamId);
+    return this.findCarnet(id);
+  }
+
   async createForUser(userId: number, data: CreatePlayerDto) {
     const team = await this.prisma.team.findUnique({
       where: {
@@ -184,6 +212,7 @@ export class PlayersService {
           dni: data.dni,
           nro_colegiatura: data.nro_colegiatura,
           edad: data.edad,
+          foto_url: data.foto_url,
           teamId,
         },
         include: {
@@ -265,6 +294,7 @@ export class PlayersService {
     dni: string;
     nro_colegiatura: string | null;
     edad: number | null;
+    foto_url: string | null;
     teamId: number;
     team: {
       id: number;
@@ -285,6 +315,7 @@ export class PlayersService {
       dni: player.dni,
       nro_colegiatura: player.nro_colegiatura,
       edad: player.edad,
+      foto_url: player.foto_url,
       teamId: player.teamId,
       team: {
         id: player.team.id,
@@ -297,6 +328,68 @@ export class PlayersService {
           player.team.user.apellido_paterno,
           player.team.user.apellido_materno,
         ].join(' '),
+      },
+    };
+  }
+
+  private toPlayerCarnetResponse(player: {
+    id: number;
+    nombres: string;
+    apellido_paterno: string;
+    apellido_materno: string;
+    dni: string;
+    nro_colegiatura: string | null;
+    edad: number | null;
+    foto_url: string | null;
+    teamId: number;
+    team: {
+      id: number;
+      nombre: string;
+      category: {
+        id: number;
+        nombre: string;
+      } | null;
+      professionalCollege: {
+        id: number;
+        nombre: string;
+        abreviatura: string | null;
+      } | null;
+      user: {
+        id: number;
+        nombres: string;
+        apellido_paterno: string;
+        apellido_materno: string;
+        dni: string;
+        celular: string;
+        email: string;
+      };
+    };
+  }) {
+    return {
+      jugador: {
+        id: player.id,
+        nombres: player.nombres,
+        apellido_paterno: player.apellido_paterno,
+        apellido_materno: player.apellido_materno,
+        dni: player.dni,
+        nro_colegiatura: player.nro_colegiatura,
+        edad: player.edad,
+        foto_url: player.foto_url,
+      },
+      equipo: {
+        id: player.team.id,
+        nombre: player.team.nombre,
+      },
+      categoria: player.team.category,
+      colegio_profesional: player.team.professionalCollege,
+      delegado: {
+        id: player.team.user.id,
+        nombres: player.team.user.nombres,
+        apellido_paterno: player.team.user.apellido_paterno,
+        apellido_materno: player.team.user.apellido_materno,
+        dni: player.team.user.dni,
+        celular: player.team.user.celular,
+        email: player.team.user.email,
       },
     };
   }

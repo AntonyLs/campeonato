@@ -35,17 +35,18 @@ model Admin {
 }
 
 model ProfessionalCollege {
-  id        Int    @id @default(autoincrement())
-  nombre    String @unique
+  id          Int    @id @default(autoincrement())
+  nombre      String @unique
+  abreviatura String? @unique
 
-  teams     Team[]
+  teams       Team[]
 }
 
 model Category {
-  id        Int    @id @default(autoincrement())
-  nombre    String @unique
+  id          Int    @id @default(autoincrement())
+  nombre      String @unique
 
-  teams     Team[]
+  teams       Team[]
 }
 
 model Team {
@@ -74,6 +75,7 @@ model Player {
   dni               String  @unique
   nro_colegiatura   String?
   edad              Int?
+  foto_url          String?
 
   teamId            Int
   team              Team    @relation(fields: [teamId], references: [id])

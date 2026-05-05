@@ -21,6 +21,11 @@ export class PlayersController {
     return this.playersService.findAll();
   }
 
+  @Get('players/:id/carnet')
+  findCarnet(@Param('id', ParseIntPipe) id: number) {
+    return this.playersService.findCarnet(id);
+  }
+
   @Get('players/:id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.playersService.findOne(id);
