@@ -85,11 +85,14 @@ Todas las rutas requieren `Authorization: Bearer TOKEN_DEL_DELEGADO`.
 | GET | `/delegate/team` | Equipo del delegado autenticado. |
 | PATCH | `/delegate/team` | Actualiza el equipo del delegado autenticado. |
 | GET | `/delegate/players` | Lista jugadores del equipo del delegado. |
-| POST | `/delegate/players` | Crea un jugador en el equipo del delegado. |
-| PATCH | `/delegate/players/:id` | Actualiza un jugador del equipo del delegado. |
+| GET | `/delegate/players/:id/carnet` | Devuelve el carnet de un jugador del equipo del delegado. |
+| POST | `/delegate/players` | Crea un jugador en el equipo del delegado (acepta foto opcional). |
+| PATCH | `/delegate/players/:id` | Actualiza un jugador del equipo del delegado (acepta foto opcional). |
 | DELETE | `/delegate/players/:id` | Elimina un jugador del equipo del delegado. |
 
-Body de `POST /delegate/players`:
+`POST /delegate/players` y `PATCH /delegate/players/:id` aceptan `multipart/form-data` con un campo `file` opcional (foto del jugador) ademas de los campos del jugador.
+
+Body de `POST /delegate/players` (campos del form):
 
 ```json
 {
@@ -110,11 +113,20 @@ Body de `POST /delegate/players`:
 |--------|------|-------------|
 | GET | `/players` | Lista todos los jugadores con delegado y equipo. |
 | GET | `/players/:id` | Devuelve un jugador por id. |
+| GET | `/players/:id/carnet` | Devuelve el carnet (datos para impresion / verificacion) de un jugador. |
 | PATCH | `/players/:id` | Actualiza un jugador por id. |
 | DELETE | `/players/:id` | Elimina un jugador por id. |
 | GET | `/teams/:teamId/players` | Lista jugadores de un equipo. |
 | POST | `/users/:userId/players` | Crea jugador usando el delegado como referencia. |
 | POST | `/users/:userId/teams/:teamId/players` | Crea jugador validando que el equipo pertenezca al delegado. |
+
+---
+
+## Public (carnets)
+
+| Metodo | Ruta | Auth | Descripcion |
+|--------|------|------|-------------|
+| GET | `/public/carnets/:codigo/verify` | - | Verifica publicamente un carnet por su `codigo` (ruta usada por el QR del carnet). |
 
 ---
 

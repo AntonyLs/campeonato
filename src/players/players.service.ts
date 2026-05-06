@@ -499,8 +499,8 @@ export class PlayersService {
 
     const baseUrl =
       process.env.CARNET_VERIFICATION_BASE_URL ??
-      'http://localhost:3000/api/public/carnets';
+      'http://localhost:3001/carnet';
 
-    return `${baseUrl}/${codigoCarnet}/verify`;
+    return `${baseUrl}/${codigoCarnet}`;
   }
 }
